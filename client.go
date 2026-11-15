@@ -57,16 +57,23 @@ func (c *HTTPChatClient) Complete(ctx context.Context, messages []Message) (stri
 	}
 	defer response.Body.Close()
 	if response.StatusCode < 200 || response.StatusCode >= 300 {
+		var message string
 		switch response.StatusCode {
-		case http.StatusUnauthorized, http.StatusForbidden:
-			return "", fmt.Errorf("model authentication failed (HTTP %d); check the configured API key", response.StatusCode)
+		case http.StatusUnauthorized:
+			message = "model authentication failed (HTTP 401); check the configured API key"
+		case http.StatusForbidden:
+			message = "model access denied (HTTP 403); check the API key and whether it may use TAI_MODEL"
 		case http.StatusNotFound:
-			return "", fmt.Errorf("model endpoint or model was not found (HTTP 404); check TAI_BASE_URL and TAI_MODEL")
+			message = "model endpoint or model was not found (HTTP 404); check TAI_BASE_URL and TAI_MODEL"
 		case http.StatusTooManyRequests:
-			return "", fmt.Errorf("model rate limit reached (HTTP 429)")
+			message = "model rate limit reached (HTTP 429)"
 		default:
-			return "", fmt.Errorf("model request failed (HTTP %d)", response.StatusCode)
+			message = fmt.Sprintf("model request failed (HTTP %d)", response.StatusCode)
 		}
+		if detail := providerErrorDetail(response.Body, c.config.APIKey); detail != "" {
+			message += "\nprovider: " + detail
+		}
+		return "", fmt.Errorf("%s", message)
 	}
 	responseBody, err := io.ReadAll(io.LimitReader(response.Body, maxResponseBytes+1))
 	if err != nil {
@@ -90,4 +97,34 @@ func (c *HTTPChatClient) Complete(ctx context.Context, messages []Message) (stri
 		return "", fmt.Errorf("model returned an empty response")
 	}
 	return content, nil
+}
+
+const (
+	maxErrorBodyBytes   = 8 * 1024
+	maxErrorDetailBytes = 300
+)
+
+// providerErrorDetail extracts only the OpenAI-style {"error":{"message":...}} text,
+// so arbitrary response bodies are never echoed.
+func providerErrorDetail(body io.Reader, apiKey string) string {
+	data, err := io.ReadAll(io.LimitReader(body, maxErrorBodyBytes))
+	if err != nil {
+		return ""
+	}
+	var payload struct {
+		Error struct {
+			Message string `json:"message"`
+		} `json:"error"`
+	}
+	if json.Unmarshal(data, &payload) != nil {
+		return ""
+	}
+	detail := strings.Join(strings.Fields(payload.Error.Message), " ")
+	if apiKey != "" {
+		detail = strings.ReplaceAll(detail, apiKey, "[redacted]")
+	}
+	if len(detail) > maxErrorDetailBytes {
+		detail = truncateUTF8(detail, maxErrorDetailBytes) + "…"
+	}
+	return safeTerminal(detail)
 }
