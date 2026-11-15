@@ -74,8 +74,8 @@ func TestShellExecutorCancellationIsBounded(t *testing.T) {
 	dir := t.TempDir()
 	startedFile := filepath.Join(dir, "started")
 	pidFile := filepath.Join(dir, "child.pid")
-	command := fmt.Sprintf("sleep 30 & child=$!; printf ready > %s; printf '%%s' \"$child\" > %s; wait",
-		shellQuote(startedFile), shellQuote(pidFile))
+	command := fmt.Sprintf("sleep 30 & child=$!; printf '%%s' \"$child\" > %s; printf ready > %s; wait",
+		shellQuote(pidFile), shellQuote(startedFile))
 	done := make(chan struct {
 		result CommandResult
 		err    error
