@@ -69,6 +69,32 @@ func TestHTTPChatClientSanitizesAuthenticationFailure(t *testing.T) {
 	}
 }
 
+func TestHTTPChatClientShowsBoundedProviderErrorMessage(t *testing.T) {
+	long := strings.Repeat("x", 1000)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusForbidden)
+		_ = json.NewEncoder(w).Encode(map[string]any{"error": map[string]any{
+			"message": "该令牌无权访问模型 test-model (key do-not-print)\x1b[31m\n" + long,
+		}})
+	}))
+	defer server.Close()
+	client := &HTTPChatClient{
+		config: Config{BaseURL: server.URL, Model: "test-model", APIKey: "do-not-print"},
+		http:   server.Client(),
+	}
+	_, err := client.Complete(context.Background(), nil)
+	if err == nil {
+		t.Fatal("expected an error")
+	}
+	msg := err.Error()
+	if !strings.Contains(msg, "access denied (HTTP 403)") || !strings.Contains(msg, "该令牌无权访问模型 test-model") {
+		t.Fatalf("expected provider reason, got %q", msg)
+	}
+	if strings.Contains(msg, "do-not-print") || strings.Contains(msg, "\x1b") || strings.Contains(msg, long) {
+		t.Fatalf("error detail was not sanitized or bounded: %q", msg)
+	}
+}
+
 func TestLoadConfigRequiresRemoteAPIKey(t *testing.T) {
 	t.Setenv("TAI_BASE_URL", "https://example.invalid/v1")
 	t.Setenv("TAI_API_KEY", "")
