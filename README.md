@@ -8,29 +8,36 @@
 
 一条命令安装最新版本到 <code>~/.local/bin/tai</code>（自动识别 macOS/Linux 与 amd64/arm64，校验 SHA256，不需要 sudo）：
 
-~~~sh
+```sh
 curl -fsSL https://raw.githubusercontent.com/kaister1231/tai/main/install.sh | sh
-~~~
+```
+
+更新到最新版本（校验 SHA256 后替换当前程序；重新运行安装命令也可以）：
+
+```sh
+tai --update
+tai --version
+```
 
 卸载：
 
-~~~sh
+```sh
 curl -fsSL https://raw.githubusercontent.com/kaister1231/tai/main/install.sh | sh -s -- --uninstall
-~~~
+```
 
 可选环境变量：<code>TAI_VERSION=v0.1.0</code> 安装指定版本，<code>TAI_INSTALL_DIR=/usr/local/bin</code> 修改安装目录（卸载时也要设置同一目录）。若安装目录不在 <code>PATH</code> 中，脚本会提示要添加的配置。
 
 已安装 Go 1.22 或更新版本时也可以：
 
-~~~sh
+```sh
 go install github.com/kaister1231/tai@latest   # 卸载：rm "$(go env GOPATH)/bin/tai"
-~~~
+```
 
 从源码构建：
 
-~~~sh
+```sh
 CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o tai .
-~~~
+```
 
 ## 发布
 
@@ -42,19 +49,19 @@ CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o tai .
 
 云端 API（不要把密钥写入仓库、命令行参数或 shell 历史）：
 
-~~~sh
+```sh
 export TAI_BASE_URL="https://api.openai.com/v1"
 export TAI_MODEL="gpt-4o-mini"
 printf "API key: "; read -s TAI_API_KEY; printf '\n'; export TAI_API_KEY
 # 也可改用已经设置的 OPENAI_API_KEY
-~~~
+```
 
 本机 Ollama（确保服务已启动并提供 OpenAI-compatible API）：
 
-~~~sh
+```sh
 export TAI_BASE_URL="http://localhost:11434/v1"
 export TAI_MODEL="llama3"
-~~~
+```
 
 配置项：
 
@@ -68,7 +75,7 @@ export TAI_MODEL="llama3"
 
 ## 使用
 
-~~~sh
+```sh
 # 一次提问
 tai '查找当前目录最大的 10 个文件'
 
@@ -86,7 +93,7 @@ tai
 # 需要时查看有界的原始 stdout/stderr
 tai --verbose '统计当前目录中的文本文件'
 tai --timeout 20s --output-limit 8192 '检查一个较大的日志'
-~~~
+```
 
 建议命令会显示为单独一行，并附中文说明。执行提示默认为 <code>[y/N]</code>；只有输入 <code>y</code> 或 <code>yes</code> 才执行。拒绝后本轮立即结束，不会自动重试同一命令；没有自动批准选项。对于管道输入和 <code>--explain</code>，可以显示命令建议，但不会执行，也不会询问确认。命令在原始工作目录中通过 <code>/bin/sh</code> 或有效的 <code>SHELL</code>（支持 sh、dash、bash、zsh、ksh）运行；每次命令都是独立 shell，<code>cd</code> 不会留在后续对话中，需要时写成 <code>cd 路径 && 命令</code>。
 
@@ -107,6 +114,6 @@ tai --timeout 20s --output-limit 8192 '检查一个较大的日志'
 
 所有测试离线运行，模型接口测试只使用本机 httptest 服务，并用无害 shell 命令验证执行流程：
 
-~~~sh
+```sh
 go test ./...
-~~~
+```

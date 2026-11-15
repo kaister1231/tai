@@ -47,7 +47,9 @@ jobs:
         run: |
           out="dist/tai-${GOOS}-${GOARCH}"
           mkdir -p "$out"
-          go build -trimpath -ldflags="-s -w" -o "$out/tai" .
+          version="dev-${GITHUB_SHA::7}"
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then version="$GITHUB_REF_NAME"; fi
+          go build -trimpath -ldflags="-s -w -X main.version=$version" -o "$out/tai" .
           cp README.md "$out/"
           (cd "$out" && sha256sum tai > SHA256SUMS)
           tar -czf "$out.tar.gz" -C dist "tai-${GOOS}-${GOARCH}"

@@ -26,11 +26,20 @@ func runCLI(ctx context.Context, args []string, stdin io.Reader, stdinIsTerminal
 	verbose := flags.Bool("verbose", false, "显示有限捕获的命令原始输出")
 	timeout := flags.Duration("timeout", 30*time.Second, "单条命令的超时时间（例如 20s）")
 	outputLimit := flags.Int("output-limit", 16*1024, "每个输出流最多捕获的字节数")
+	showVersion := flags.Bool("version", false, "显示版本")
+	selfUpdate := flags.Bool("update", false, "从 GitHub Release 更新到最新版本")
 	if err := flags.Parse(args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
 			return 0
 		}
 		return 2
+	}
+	if *showVersion {
+		fmt.Fprintf(stdout, "tai %s\n", currentVersion())
+		return 0
+	}
+	if *selfUpdate {
+		return runUpdate(ctx, stdout, stderr)
 	}
 	prompt := strings.TrimSpace(strings.Join(flags.Args(), " "))
 	if prompt == "" && !stdinIsTerminal {
@@ -280,6 +289,8 @@ func printUsage(output io.Writer) {
 		"  --timeout 30s   命令超时（范围 0 到 10m）\n"+
 		"  --output-limit 16384\n"+
 		"                  stdout 和 stderr 各自的捕获字节上限\n"+
+		"  --version       显示版本\n"+
+		"  --update        从 GitHub Release 更新到最新版本（校验 SHA256）\n"+
 		"  --help          显示帮助\n\n"+
 		"配置：\n"+
 		"  TAI_BASE_URL    OpenAI-compatible API 地址（默认 https://api.openai.com/v1）\n"+
