@@ -4,20 +4,37 @@
 
 程序由 Go 标准库构建为单个原生可执行文件，不需要 Python、运行时依赖、守护进程或后台服务。当前支持 macOS 和 Linux。
 
-## 安装与构建
+## 安装与卸载
 
-需要 Go 1.22 或更新版本。在项目目录中构建并将二进制复制到 PATH 中的目录：
+一条命令安装最新版本到 <code>~/.local/bin/tai</code>（自动识别 macOS/Linux 与 amd64/arm64，校验 SHA256，不需要 sudo）：
 
 ~~~sh
-# 在本目录生成不依赖 libc 的 tai 可执行文件
-CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o tai .
-
-# 可选：安装到用户 bin 目录（需确保该目录在 PATH 中）
-mkdir -p "$HOME/.local/bin"
-install -m 755 tai "$HOME/.local/bin/tai"
+curl -fsSL https://raw.githubusercontent.com/kaister1231/tai/main/install.sh | sh
 ~~~
 
-也可将生成的 <code>tai</code> 复制到任意 <code>PATH</code> 包含的目录。此仓库未配置远程模块地址。
+卸载：
+
+~~~sh
+curl -fsSL https://raw.githubusercontent.com/kaister1231/tai/main/install.sh | sh -s -- --uninstall
+~~~
+
+可选环境变量：<code>TAI_VERSION=v0.1.0</code> 安装指定版本，<code>TAI_INSTALL_DIR=/usr/local/bin</code> 修改安装目录（卸载时也要设置同一目录）。若安装目录不在 <code>PATH</code> 中，脚本会提示要添加的配置。
+
+已安装 Go 1.22 或更新版本时也可以：
+
+~~~sh
+go install github.com/kaister1231/tai@latest   # 卸载：rm "$(go env GOPATH)/bin/tai"
+~~~
+
+从源码构建：
+
+~~~sh
+CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o tai .
+~~~
+
+## 发布
+
+推送 <code>v*</code> 标签（如 <code>git tag v0.1.0 && git push origin v0.1.0</code>）后，GitHub Actions 会测试、构建四个平台并发布 GitHub Release，附带 <code>tai-&lt;os&gt;-&lt;arch&gt;.tar.gz</code> 和 <code>SHA256SUMS</code>，安装脚本从这里下载。
 
 ## 连接模型
 
