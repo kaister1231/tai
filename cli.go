@@ -102,7 +102,7 @@ func runCLI(ctx context.Context, args []string, stdin io.Reader, stdinIsTerminal
 func runInteractive(ctx context.Context, agent *Agent, reader *bufio.Reader, stdout, stderr io.Writer, explain, verbose bool) int {
 	fmt.Fprintln(stdout, "tai：用中文描述你想做什么。输入 /help 查看帮助，/exit 退出。")
 	for {
-		fmt.Fprint(stdout, "\ntai> ")
+		fmt.Fprintf(stdout, "\n%s ", newStyle(stdout).bold("tai>"))
 		line, err := readLineContext(ctx, reader, maxPromptBytes)
 		if ctx.Err() != nil {
 			fmt.Fprintln(stderr, "\n已中断。")
@@ -145,20 +145,22 @@ func runInteractive(ctx context.Context, agent *Agent, reader *bufio.Reader, std
 }
 
 func runTurn(ctx context.Context, agent *Agent, prompt, pipedInput string, executionAllowed bool, reader *bufio.Reader, stdout, stderr io.Writer, verbose bool) error {
+	st := newStyle(stdout)
 	display := TurnDisplay{
 		Answer: func(answer string) {
-			fmt.Fprintln(stdout, safeTerminal(answer))
+			fmt.Fprintf(stdout, "\n%s\n", st.answer(answer))
 		},
 		Command: func(action Action, willExecute bool) {
-			fmt.Fprintln(stdout, "\n建议命令：")
-			fmt.Fprintln(stdout, action.Command)
-			fmt.Fprintf(stdout, "说明：%s\n", safeTerminal(action.Explanation))
+			fmt.Fprintf(stdout, "\n  %s %s\n", st.dim("$"), st.command(action.Command))
+			if explanation := strings.TrimSpace(action.Explanation); explanation != "" {
+				fmt.Fprintf(stdout, "  %s\n", st.dim(safeTerminal(explanation)))
+			}
 			if !willExecute {
-				fmt.Fprintln(stdout, "仅供参考，不会执行。")
+				fmt.Fprintf(stdout, "\n  %s\n", st.dim("仅供参考，不会执行。"))
 			}
 		},
 		Confirm: func(action Action) bool {
-			fmt.Fprint(stdout, "要执行以上命令吗？[y/N] ")
+			fmt.Fprintf(stdout, "\n  %s ", st.prompt("要执行以上命令吗？[y/N]"))
 			line, err := readLineContext(ctx, reader, maxConfirmationLineBytes)
 			if err != nil {
 				if errors.Is(err, errInputLineTooLong) {
@@ -243,7 +245,7 @@ func readBoundedLine(reader *bufio.Reader, maxBytes int) (string, error) {
 }
 
 func printCommandResult(output io.Writer, result CommandResult, heading string) {
-	fmt.Fprintln(output, heading)
+	fmt.Fprintf(output, "\n%s\n", newStyle(output).dim(heading))
 	printResultStream(output, "标准输出", result.Stdout)
 	printResultStream(output, "标准错误", result.Stderr)
 	if result.TimedOut {
