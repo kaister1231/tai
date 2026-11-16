@@ -30,3 +30,16 @@ func TestScopeRulesAreFixedAndReassertedAfterUserInput(t *testing.T) {
 		t.Fatalf("user question was not JSON-encoded as data: %q", user)
 	}
 }
+
+func TestEncodedQuestionLeavesRoomForPipedInput(t *testing.T) {
+	client := &scriptedClient{responses: []string{`{"type":"answer","text":"ok"}`}}
+	agent := newAgent(client, nil, "/tmp", "bash", 0, 0)
+	if err := agent.RunTurn(context.Background(), strings.Repeat("<", maxPromptBytes), "piped-marker", false, TurnDisplay{}); err != nil {
+		t.Fatal(err)
+	}
+	messages := client.requests[0]
+	user := messages[len(messages)-2].Content
+	if len(user) >= maxMessageBytes || !strings.Contains(user, `"piped-marker"`) {
+		t.Fatalf("piped input was crowded out (len=%d)", len(user))
+	}
+}
